@@ -1,0 +1,172 @@
+namespace :deploy do
+  
+  desc 'Start Unicorn'
+  task :start do
+    on roles(fetch(:unicorn_roles)) do
+      if unicorn_running?
+        warn "Unicorn is already running (pid: #{current_pid}). Nothing done."
+      else
+        start_unicorn
+      end
+    end
+  end
+  
+  desc 'Stop Unicorn'
+  task :stop do
+    on roles(fetch(:unicorn_roles)) do
+      if unicorn_running?
+        signal_master('QUIT')
+      else
+        warn "Unicorn is not running. Nothing done."
+      end
+    end
+  end
+  
+  desc 'Immediately shutdown Unicorn'
+  task :shutdown do
+    on roles(fetch(:unicorn_roles)) do
+      if unicorn_running?
+        signal_master('TERM')
+      else
+        warn "Unicorn is not running. Nothing done."
+      end
+    end
+  end
+  
+  desc 'Upgrade Unicorn'
+  task :upgrade do
+    on roles(fetch(:unicorn_roles)) do
+      if unicorn_running?
+        signal_master("USR2")
+        verify_upgrade
+      else
+        warn "Unicorn is not running. Let's start it."
+        start_unicorn
+      end
+    end
+  end
+  
+  desc 'Reopen Unicorn logs'
+  task :reopen_logs do
+    on roles(fetch(:unicorn_roles)) do
+      if unicorn_running?
+        signal_master("USR1")
+      else
+        warn "Unicorn is not running. Nothing done."
+      end
+    end
+  end
+  
+  desc 'Restart Unicorn (Stop & Start)'
+  task :restart do
+    invoke "deploy:stop"
+    sleep 2
+    invoke "deploy:start"
+  end
+  
+  desc 'Uncrement the number of Unicorn worker processes by one'
+  task :add_worker do
+    on roles(fetch(:unicorn_roles)) do
+      if unicorn_running?
+        signal_master("TTIN")
+      else
+        warn "Unicorn is not running. Nothing done."
+      end
+    end
+  end
+  
+  desc 'Decrement the number of Unicorn worker processes by one'
+  task :rem_worker do
+    on roles(fetch(:unicorn_roles)) do
+      if unicorn_running?
+        signal_master("TTOU")
+      else
+        warn "Unicorn is not running. Nothing done."
+      end
+    end
+  end
+  
+  task :after_publish_callback do
+    invoke fetch(:unicorn_action_after_publish)
+  end
+
+  after :publishing, :after_publish_callback
+end
+
+# Defaults
+
+namespace :load do
+  task :defaults do
+    set :unicorn_pidfile, -> { "#{current_path}/tmp/pids/unicorn.pid" }
+    set :unicorn_env, -> { fetch(:rails_env, 'production') }
+    set :unicorn_bin, -> { "unicorn" }
+    set :unicorn_roles, -> { :app }
+    set :unicorn_upgrade_timeout, -> { 60 }
+    set :unicorn_action_after_publish, -> { "deploy:upgrade" }
+  end
+end
+
+# Helper methods
+
+def current_pid
+  capture :cat, fetch(:unicorn_pidfile)
+end
+
+def signal_master(signal)
+  pid_file = fetch(:unicorn_pidfile)
+
+  if test "[ -s #{pid_file} ]"
+    execute :kill, "-#{signal}", "`cat #{pid_file}`"
+  end
+end
+
+def signal_old_master(signal)
+  pid_file = fetch(:unicorn_pidfile) + ".oldbin"
+  puts "Sending signal #{signal} to Unicorn"
+
+  if test "[ -s #{pid_file} ]"
+    execute :kill, "-#{signal}", "`cat #{pid_file}`"
+  end
+end
+
+def unicorn_running?
+  pid_file = fetch(:unicorn_pidfile)
+
+  test "[ -s #{pid_file} ] && kill -0 `cat #{pid_file}` > /dev/null 2>&1"
+end
+
+def start_unicorn
+  primary_config_path = "#{current_path}/config/unicorn.rb"
+  secondary_config_path = "#{current_path}/config/unicorn/#{fetch(:unicorn_env)}.rb"
+
+  config_path = if test("[ -f #{primary_config_path} ]")
+    primary_config_path
+  elsif test("[ -f #{secondary_config_path} ]")
+    secondary_config_path
+  else
+    msg = "Config file for \"#{fetch(:unicorn_env)}\" environment was not found at either \"#{primary_config_path}\" or \"#{secondary_config_path}\""
+    error msg
+    exit 1
+  end
+
+  within current_path do
+    args = []
+    args << "-c #{config_path}"
+    args << "-E #{fetch(:unicorn_env)}"
+    args << "-D"
+
+    execute :bundle, :exec, fetch(:unicorn_bin), *args
+  end
+end
+
+def verify_upgrade    
+  n = fetch(:unicorn_upgrade_timeout)
+  pid_file = fetch(:unicorn_pidfile) + ".oldbin"
+  while test(" [ -s #{pid_file} ] ") && n >= 0
+    n -= 1
+    sleep 1
+  end
+  if n < 0 && test(" [ -s #{pid_file} ] ")
+    error "The Unicorn old pid still exists after #{fetch(:unicorn_upgrade_timeout)} seconds"
+  end
+end
