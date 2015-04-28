@@ -1,4 +1,4 @@
-namespace :deploy do
+namespace :unicorn do
   
   desc 'Start Unicorn'
   task :start do
@@ -87,11 +87,16 @@ namespace :deploy do
   end
   
   task :after_publish_callback do
-    invoke fetch(:unicorn_action_after_publish)
+    on roles(fetch(:unicorn_roles)) do
+      if action = fetch(:unicorn_action_after_publish)
+        invoke action
+      end
+    end
   end
 
-  after :publishing, :after_publish_callback
 end
+
+after "deploy:published", "unicorn:after_publish_callback"
 
 # Defaults
 
@@ -102,7 +107,7 @@ namespace :load do
     set :unicorn_bin, -> { "unicorn" }
     set :unicorn_roles, -> { :app }
     set :unicorn_upgrade_timeout, -> { 60 }
-    set :unicorn_action_after_publish, -> { "deploy:upgrade" }
+    set :unicorn_action_after_publish, -> { "unicorn:upgrade" }
   end
 end
 
