@@ -2,7 +2,7 @@ namespace :unicorn do
   
   desc 'Start Unicorn'
   task :start do
-    on roles(fetch(:unicorn_roles)) do
+    on release_roles(fetch(:unicorn_roles)) do
       if unicorn_running?
         warn "Unicorn is already running (pid: #{current_pid}). Nothing done."
       else
@@ -13,7 +13,7 @@ namespace :unicorn do
   
   desc 'Stop Unicorn'
   task :stop do
-    on roles(fetch(:unicorn_roles)) do
+    on release_roles(fetch(:unicorn_roles)) do
       if unicorn_running?
         signal_master('QUIT')
       else
@@ -24,7 +24,7 @@ namespace :unicorn do
   
   desc 'Immediately shutdown Unicorn'
   task :shutdown do
-    on roles(fetch(:unicorn_roles)) do
+    on release_roles(fetch(:unicorn_roles)) do
       if unicorn_running?
         signal_master('TERM')
       else
@@ -35,7 +35,7 @@ namespace :unicorn do
   
   desc 'Upgrade Unicorn'
   task :upgrade do
-    on roles(fetch(:unicorn_roles)) do
+    on release_roles(fetch(:unicorn_roles)) do
       if unicorn_running?
         signal_master("USR2")
         verify_upgrade
@@ -48,7 +48,7 @@ namespace :unicorn do
   
   desc 'Reopen Unicorn logs'
   task :reopen_logs do
-    on roles(fetch(:unicorn_roles)) do
+    on release_roles(fetch(:unicorn_roles)) do
       if unicorn_running?
         signal_master("USR1")
       else
@@ -66,7 +66,7 @@ namespace :unicorn do
   
   desc 'Uncrement the number of Unicorn worker processes by one'
   task :add_worker do
-    on roles(fetch(:unicorn_roles)) do
+    on release_roles(fetch(:unicorn_roles)) do
       if unicorn_running?
         signal_master("TTIN")
       else
@@ -77,7 +77,7 @@ namespace :unicorn do
   
   desc 'Decrement the number of Unicorn worker processes by one'
   task :rem_worker do
-    on roles(fetch(:unicorn_roles)) do
+    on release_roles(fetch(:unicorn_roles)) do
       if unicorn_running?
         signal_master("TTOU")
       else
@@ -87,7 +87,7 @@ namespace :unicorn do
   end
   
   task :after_publish_callback do
-    on roles(fetch(:unicorn_roles)) do
+    on release_roles(fetch(:unicorn_roles)) do
       if action = fetch(:unicorn_action_after_publish)
         invoke action
       end
