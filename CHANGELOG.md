@@ -1,3 +1,13 @@
+## [0.2.0] 2015-04-28
+
+### Changed
+
+Changed the namespace from "deploy" to "unicorn"
+
+A Capistrano plugin should not monkeypatch a common namespace.
+It should have its own namespace and optionaly plug itself
+on the default workflow (TODO).
+
 ## [0.1.1] 2015-02-26
 
 ### Added
