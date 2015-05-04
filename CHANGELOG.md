@@ -1,3 +1,9 @@
+## [0.2.1] 2015-05-04
+
+### Changed
+
+Execute actions only on `release_roles` instead of `roles`.
+
 ## [0.2.0] 2015-04-28
 
 ### Changed
