@@ -1,3 +1,9 @@
+## [0.2.2] 2015-05-12
+
+### Fixed
+
+Apply the change of namespace everywhere
+
 ## [0.2.1] 2015-05-04
 
 ### Changed
