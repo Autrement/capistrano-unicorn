@@ -59,9 +59,9 @@ namespace :unicorn do
   
   desc 'Restart Unicorn (Stop & Start)'
   task :restart do
-    invoke "deploy:stop"
+    invoke "unicorn:stop"
     sleep 2
-    invoke "deploy:start"
+    invoke "unicorn:start"
   end
   
   desc 'Uncrement the number of Unicorn worker processes by one'
